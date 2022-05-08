@@ -2,10 +2,12 @@ package com.ramninder.security.controller;
 
 
 import com.ramninder.security.model.Inventory;
+import com.ramninder.security.repository.InventoryRepository;
 import com.ramninder.security.service.InventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -16,32 +18,57 @@ import java.util.Optional;
 public class InventoryController {
 
     private InventoryService inventoryService;
+    private InventoryRepository inventoryRepository;
 
     @Autowired
-    public  InventoryController(InventoryService inventoryService){
+    public  InventoryController(InventoryService inventoryService, InventoryRepository inventoryRepository){
         this.inventoryService = inventoryService;
+        this.inventoryRepository = inventoryRepository;
     }
 
     @PostMapping("/addProductInfo")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Inventory> saveProductInformation(@Valid @RequestBody Inventory inventory){
         return new ResponseEntity<Inventory>(inventoryService.saveProductInfo(inventory), HttpStatus.CREATED);
     }
 
-    @GetMapping("/getProductById")
-    public  ResponseEntity<Optional<Inventory>> getProductInformation(@PathVariable Long id){
-        return  new ResponseEntity<Optional<Inventory>>(inventoryService.findProductInfoById(id), HttpStatus.OK);
+    @GetMapping("/getProductById/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('EMPLOYEE')")
+    public ResponseEntity getProductInformation(@PathVariable Long id){
+
+        if (!inventoryRepository.existsById(id)){
+            return ResponseEntity
+                    .badRequest()
+                    .body("Error: Product with id: "+id+" does not exist");
+        }else {
+            return new ResponseEntity(inventoryService.findProductInfoById(id), HttpStatus.OK);
+        }
     }
 
-    @PutMapping("/updateProductInfo")
-    public  ResponseEntity<Optional<Inventory>> updateProductInformation
-            (@RequestBody Inventory inventory,@PathVariable Long id){
-        return new ResponseEntity<Optional<Inventory>>(inventoryService.updateProductInfo(inventory, id),HttpStatus.OK);
+    @PutMapping("/updateProductInfo/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    public  ResponseEntity updateProductInformation
+            ( @Valid @RequestBody Inventory inventory,@PathVariable Long id){
+        if (!inventoryRepository.existsById(id)){
+            return ResponseEntity
+                    .badRequest()
+                    .body("Error: Product with id: "+id+" does not exist");
+        }else {
+            return new ResponseEntity<Optional<Inventory>>(inventoryService.updateProductInfo(inventory, id), HttpStatus.OK);
+        }
     }
 
-    @DeleteMapping("/removeProductInfo")
+    @DeleteMapping("/removeProductInfo/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<?> removeProductInfo(@PathVariable long id){
         inventoryService.removeProductInfo(id);
+        if (!inventoryRepository.existsById(id)){
+            return ResponseEntity
+                    .badRequest()
+                    .body("Error: Product with id: "+id+" does not exist");
+        }else {
         return  ResponseEntity.ok("product Info is deleted");
+    }
     }
 
 }
