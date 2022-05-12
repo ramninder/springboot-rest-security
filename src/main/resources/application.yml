@@ -1,6 +1,6 @@
 
 server:
-  port: 8c;081
+  port: 8081
 
 # app properties
 ramninder:
